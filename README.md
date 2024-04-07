@@ -1,3 +1,3 @@
-# RemindersIntegration
+# Jira SyncTion Integration Package
 
-A description of this package.
+This package is design to make SyncTion compatible with Jira
