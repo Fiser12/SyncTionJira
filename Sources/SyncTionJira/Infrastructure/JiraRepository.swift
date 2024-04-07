@@ -100,7 +100,6 @@ public final class JiraRepository: FormRepository {
         let request = URLRequest(url: .jiraProjects)
             .jiraHeaders(secrets: jiraSecrets)
             .method(.get)
-        guard request.httpBody != nil else { throw FormError.transformation }
 
         return try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
             try await self.request(request, [JiraProjectDTO].self)
