@@ -20,9 +20,9 @@ import PreludePackage
 public final class NotionFormService: FormService {
     public static let shared = NotionFormService()
 
-    public let description = String(localized: "Notion")
-    public let icon = "NotionLogo"
-    public var id = FormServiceId(hash: UUID(uuidString: "4f6a9d57-b8d0-4635-852a-9a49de2e7ad5")!)
+    public let description = String(localized: "Jira")
+    public let icon = "JiraLogo"
+    public var id = FormServiceId(hash: UUID(uuidString: "4f6a9d57-b8d0-4635-852a-9a49de2e7ada")!)
 
     public var scratchTemplate: FormTemplate {
         FormNotionRepository.scratchTemplate

@@ -27,17 +27,21 @@ fileprivate extension URLRequest {
     }
 }
 
+extension Constants {
+    public static let jiraSecretLabel = "JIRA_PRIVATE_SECRET"
+}
+
 public final class FormNotionRepository: FormRepository {
     public static let shared = FormNotionRepository()
     
-    @KeychainWrapper(Constants.notionSecretLabel) public var notionSecrets: NotionSecrets?
+    @KeychainWrapper(Constants.jiraSecretLabel) public var jiraSecrets: NotionSecrets?
 
     func post(form: FormModel) async throws -> Void {
-        guard let notionSecrets else { throw FormError.auth(NotionFormService.shared.id) }
+        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
         guard let postPageBody = NotionPageBodyDTO(form) else { throw FormError.transformation }
         
         let request = URLRequest(url: .notionPages)
-            .notionHeaders(secrets: notionSecrets)
+            .notionHeaders(secrets: jiraSecrets)
             .method(.post(postPageBody))
         
         guard request.httpBody != nil else { throw FormError.transformation }
@@ -199,10 +203,10 @@ public final class FormNotionRepository: FormRepository {
     }
         
     func loadNotionDatabaseDTO() async throws -> NotionGenericResponseDTO<NotionDatabaseDTO> {
-        guard let notionSecrets else { throw FormError.auth(NotionFormService.shared.id) }
+        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
 
         let request = URLRequest(url: .notionSearch)
-            .notionHeaders(secrets: notionSecrets)
+            .notionHeaders(secrets: jiraSecrets)
             .method(.post(NotionFilterBodyDTO()))
         guard request.httpBody != nil else { throw FormError.transformation }
 
@@ -212,10 +216,10 @@ public final class FormNotionRepository: FormRepository {
     }
     
     func searchPages(text: String, databaseId: String) async throws -> [Option] {
-        guard let notionSecrets else { throw FormError.auth(NotionFormService.shared.id) }
+        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
 
         let request = URLRequest(url: .notionQueryDatabase(by: databaseId))
-            .notionHeaders(secrets: notionSecrets)
+            .notionHeaders(secrets: jiraSecrets)
             .method(.post(NotionFilterBodyDTO(text)))
         guard request.httpBody != nil else { throw FormError.transformation }
 
