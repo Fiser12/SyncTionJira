@@ -7,7 +7,7 @@ SyncTion is free software: you can redistribute it and/or modify it under the te
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-struct NotionGenericResponseDTO<T: Equatable & Decodable>: Equatable, Decodable {
+struct JiraGenericResponseDTO<T: Equatable & Decodable>: Equatable, Decodable {
     let object: String
     let results: [T]
     let next_cursor: String?

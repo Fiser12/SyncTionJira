@@ -1,5 +1,5 @@
 //
-//  NotionSearchDTO.swift
+//  JiraSearchDTO.swift
 //  SyncTion (macOS)
 //
 //  Created by Ruben on 18.07.22.
@@ -12,7 +12,7 @@ SyncTion is free software: you can redistribute it and/or modify it under the te
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-struct NotionSearchDTO: Equatable, Decodable {
+struct JiraSearchDTO: Equatable, Decodable {
     let object: String
     let id: String
     let created_time: String

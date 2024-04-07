@@ -1,5 +1,5 @@
 //
-//  NotionFormService.swift
+//  JiraFormService.swift
 //  SyncTion (macOS)
 //
 //  Created by Rubén on 25/12/22.
@@ -17,35 +17,35 @@ import SyncTionCore
 import Foundation
 import PreludePackage
 
-public final class NotionFormService: FormService {
-    public static let shared = NotionFormService()
+public final class JiraFormService: FormService {
+    public static let shared = JiraFormService()
 
     public let description = String(localized: "Jira")
     public let icon = "JiraLogo"
     public var id = FormServiceId(hash: UUID(uuidString: "4f6a9d57-b8d0-4635-852a-9a49de2e7ada")!)
 
     public var scratchTemplate: FormTemplate {
-        FormNotionRepository.scratchTemplate
+        JiraRepository.scratchTemplate
     }
 
     public let onChangeEvents: [any TemplateEvent] = [DatabaseFieldHandler.shared, OnChangeRelationFields.shared]
     
     
-    func loadInputsFromNotionDatabase(form: FormModel, input: OptionsTemplate) async throws -> FormDomainEvent {
+    func loadInputsFromJiraDatabase(form: FormModel, input: OptionsTemplate) async throws -> FormDomainEvent {
         guard let databaseId = input.value.selected.first?.optionId else {
             throw FormError.event(.skip)
         }
         
-        logger.info("LoadInputsFromNotionDatabase: init")
-        guard let notionColumns = try await repository.loadNotionDatabases(databaseId: databaseId) else {
+        logger.info("LoadInputsFromJiraDatabase: init")
+        guard let jiraColumns = try await repository.loadJiraDatabases(databaseId: databaseId) else {
             throw FormError.event(.skip)
         }
         return { form in
-            form.inputs = [AnyInputTemplate(input)] + notionColumns
+            form.inputs = [AnyInputTemplate(input)] + jiraColumns
             form.saveValuesAsDefault()
             
-            logger.info("LoadInputsFromNotionDatabase: success")
-            guard let firstFocus = notionColumns.first?.id else { return }
+            logger.info("LoadInputsFromJiraDatabase: success")
+            guard let firstFocus = jiraColumns.first?.id else { return }
             form.template.firstInputId = firstFocus
         }
     }
@@ -57,15 +57,15 @@ public final class NotionFormService: FormService {
         static let shared = DatabaseFieldHandler()
         
         func assess(old: OptionsTemplate, input: OptionsTemplate) -> Bool {
-            input.header.tags.contains(.Notion.DatabasesField)
+            input.header.tags.contains(.Jira.DatabasesField)
         }
 
         func execute(form: FormModel, old: OptionsTemplate, input: OptionsTemplate) async throws -> FormDomainEvent {
             if old.search != input.search && input.config.typingSearch {
-                return try await NotionFormService.shared.filterByText(form: form, input: input)
+                return try await JiraFormService.shared.filterByText(form: form, input: input)
             }
             if old.value != input.value {
-                return try await NotionFormService.shared.loadInputsFromNotionDatabase(form: form, input: input)
+                return try await JiraFormService.shared.loadInputsFromJiraDatabase(form: form, input: input)
             }
             throw FormError.event(.skip)
         }
@@ -77,18 +77,18 @@ public final class NotionFormService: FormService {
         static let shared = OnChangeRelationFields()
 
         func assess(old: OptionsTemplate, input: OptionsTemplate) -> Bool {
-            input.header.tags.contains(.Notion.ColumnType.relation)
+            input.header.tags.contains(.Jira.ColumnType.relation)
         }
 
         func execute(form: FormModel, old: OptionsTemplate, input: OptionsTemplate) async throws -> FormDomainEvent {
             guard old.search != input.search && input.config.typingSearch else {
                 throw FormError.event(.skip)
             }
-            return try await NotionFormService.shared.onChangeRelation(form: form, oldInput: old, input: input)
+            return try await JiraFormService.shared.onChangeRelation(form: form, oldInput: old, input: input)
         }
     }
     
-    let repository = FormNotionRepository.shared
+    let repository = JiraRepository.shared
 
     public func load(form: FormModel) async throws -> FormDomainEvent {
         let input = try await loadDatabasesList(form: form)
@@ -102,8 +102,8 @@ public final class NotionFormService: FormService {
     }
     
     private func loadDatabasesList(form: FormModel) async throws -> OptionsTemplate {
-        guard var input: OptionsTemplate = form.inputs.first(tag: .Notion.DatabasesField) else {
-            throw FormError.nonLocatedInput(.Notion.DatabasesField)
+        guard var input: OptionsTemplate = form.inputs.first(tag: .Jira.DatabasesField) else {
+            throw FormError.nonLocatedInput(.Jira.DatabasesField)
         }
 
         let result = try await repository.databases()
@@ -116,36 +116,36 @@ public final class NotionFormService: FormService {
     }
         
     private func onDatabaseFieldChange(form: FormModel, oldInput: OptionsTemplate, input: OptionsTemplate) async throws -> FormDomainEvent {
-        guard input.header.tags.contains(.Notion.DatabasesField) else {
+        guard input.header.tags.contains(.Jira.DatabasesField) else {
             throw FormError.event(.skip)
         }
         if oldInput.search != input.search, input.config.typingSearch {
             return try await filterByText(form: form, input: input)
         } else if oldInput.value != input.value {
-            return try await loadInputsFromNotionDatabase(form: form, input: input)
+            return try await loadInputsFromJiraDatabase(form: form, input: input)
         }
         throw FormError.event(.skip)
     }
     
     func onChangeRelation(form: FormModel, oldInput: OptionsTemplate, input: OptionsTemplate) async throws -> FormDomainEvent {
-        guard input.header.tags.contains(.Notion.ColumnType.relation) else {
+        guard input.header.tags.contains(.Jira.ColumnType.relation) else {
             throw FormError.event(.skip)
         }
         guard oldInput.search != input.search, input.config.typingSearch else {
             throw FormError.event(.skip)
         }
-        return try await searchPageInNotionDatabaseOnType(form: form, input: input)
+        return try await searchPageInJiraDatabaseOnType(form: form, input: input)
     }
 
         
-    private func searchPageInNotionDatabaseOnType(form: FormModel, input: OptionsTemplate) async throws -> FormDomainEvent {
-        guard input.header.tags.contains(Tag.Notion.ColumnType.relation), !input.search.isEmpty, let targetId = input.config.targetId else {
+    private func searchPageInJiraDatabaseOnType(form: FormModel, input: OptionsTemplate) async throws -> FormDomainEvent {
+        guard input.header.tags.contains(Tag.Jira.ColumnType.relation), !input.search.isEmpty, let targetId = input.config.targetId else {
             throw FormError.event(.skip)
         }
 
         try await delay()
 
-        logger.info("SearchPageInNotionDatabaseOnType: init")
+        logger.info("SearchPageInJiraDatabaseOnType: init")
 
         let results = try await repository.searchPages(text: input.search, databaseId: targetId)
         
@@ -153,7 +153,7 @@ public final class NotionFormService: FormService {
         inputCopy.load(options: results, keepSelected: true)
         return { [inputCopy] form in
             form.inputs[input.id] = AnyInputTemplate(inputCopy)
-            logger.info("SearchPageInNotionDatabaseOnType: success")
+            logger.info("SearchPageInJiraDatabaseOnType: success")
         }
     }
 }

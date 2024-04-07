@@ -1,8 +1,8 @@
 //
-//  NotionFilterBodyDTO.swift
+//  JiraErrorDTO.swift
 //  SyncTion (macOS)
 //
-//  Created by Ruben on 18.07.22.
+//  Created by Rubén on 25/1/23.
 //
 
 /*
@@ -12,24 +12,11 @@ SyncTion is free software: you can redistribute it and/or modify it under the te
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-struct NotionFilterBodyDTO: Encodable {
-    let filter: Filter
+import Foundation
 
-    init(_ text: String) {
-        filter = Filter(title: TitleFilter(contains: text), value: nil)
-    }
-
-    init() {
-        filter = Filter(property: "object", value: "database")
-    }
-}
-
-struct Filter: Encodable {
-    var property: String = "title"
-    var title: TitleFilter?
-    var value: String?
-}
-
-struct TitleFilter: Encodable {
-    let contains: String
+struct JiraErrorDTO: Decodable {
+    let object: String
+    let status: Int
+    let code: String
+    let message: String
 }

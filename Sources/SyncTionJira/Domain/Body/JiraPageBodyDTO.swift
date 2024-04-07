@@ -1,5 +1,5 @@
 //
-//  NotionPageBodyDTO.swift
+//  JiraPageBodyDTO.swift
 //  SyncTion (iOS)
 //
 //  Created by rgarciah on 19/7/21.
@@ -20,16 +20,16 @@ struct ParentBody: Encodable {
     let database_id: String
 }
 
-struct NotionPageBodyDTO: Encodable {
+struct JiraPageBodyDTO: Encodable {
     let parent: ParentBody
     let properties: [String: ValueBody]
     
     init?(_ form: FormModel) {
         guard
-            let databaseInput: OptionsTemplate = form.inputs.first(tag: Tag.Notion.DatabasesField),
+            let databaseInput: OptionsTemplate = form.inputs.first(tag: Tag.Jira.DatabasesField),
             let databaseId = databaseInput.value.selected.first?.optionId
         else {
-            logger.error("NotionPageBodyDTO: NotionDatabasesInputTag was not found")
+            logger.error("JiraPageBodyDTO: JiraDatabasesInputTag was not found")
             return nil
         }
         
@@ -41,21 +41,21 @@ struct NotionPageBodyDTO: Encodable {
         }
         let properties: [String: ValueBody] = Dictionary(
             uniqueKeysWithValues: values.filter {
-                !$0.0.tags.contains(Tag.Notion.DatabasesField)
+                !$0.0.tags.contains(Tag.Jira.DatabasesField)
             }
                 .map { item in
                     let (header, value) = item
                     let key = header.name
                     switch value {
                     case let text as String:
-                        if header.tags.contains(Tag.Notion.ColumnType.title) {
+                        if header.tags.contains(Tag.Jira.ColumnType.title) {
                             let valueBody = ValueBody(title: [TitleBody(text: TextBody(content: text))])
                             return (key, valueBody)
-                        } else if header.tags.contains(Tag.Notion.ColumnType.number) {
+                        } else if header.tags.contains(Tag.Jira.ColumnType.number) {
                             return (key, ValueBody(number: Double(text)))
-                        } else if header.tags.contains(Tag.Notion.ColumnType.url) && !text.isEmpty {
+                        } else if header.tags.contains(Tag.Jira.ColumnType.url) && !text.isEmpty {
                             return (key, ValueBody(url: text))
-                        } else if header.tags.contains(Tag.Notion.ColumnType.rich_text), !text.isEmpty {
+                        } else if header.tags.contains(Tag.Jira.ColumnType.rich_text), !text.isEmpty {
                             let valueBody = ValueBody(richTextbody: [RichTextBody(text: TextBody(content: text)),])
                             return (key, valueBody)
                         }
@@ -66,12 +66,12 @@ struct NotionPageBodyDTO: Encodable {
                             return (key, ValueBody(date: DateBody(start: startString, end: endString)))
                         }
                     case let options as Options:
-                        if let optionId = options.selected.first?.optionId, header.tags.contains(Tag.Notion.ColumnType.select) {
+                        if let optionId = options.selected.first?.optionId, header.tags.contains(Tag.Jira.ColumnType.select) {
                             return (key, ValueBody(select: SelectBody(id: optionId)))
-                        } else if header.tags.contains(Tag.Notion.ColumnType.multi_select) {
+                        } else if header.tags.contains(Tag.Jira.ColumnType.multi_select) {
                             let valueBody = ValueBody(multiselect: options.selected.map { SelectBody(id: $0.optionId)} )
                             return (key, valueBody)
-                        } else if header.tags.contains(Tag.Notion.ColumnType.relation) {
+                        } else if header.tags.contains(Tag.Jira.ColumnType.relation) {
                             let valueBody = ValueBody(relation: options.selected.map { RelationBody(id: $0.optionId)} )
                             return (key, valueBody)
                         }

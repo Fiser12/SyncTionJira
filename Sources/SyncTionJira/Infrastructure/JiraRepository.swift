@@ -1,5 +1,5 @@
 //
-//  FormNotionRepository.swift
+//  FormJiraRepository.swift
 //  SyncTion (macOS)
 //
 //  Created by Ruben on 17.07.22.
@@ -11,19 +11,19 @@ import SyncTionCore
 import PreludePackage
 
 fileprivate extension URL {
-    static let notionAPI = URL(string: "https://api.notion.com")!
-    static let notionSearch: URL = .notionAPI.appendingPathComponent("v1/search")
-    static let notionPages: URL = .notionAPI.appendingPathComponent("v1/pages")
-    static func notionQueryDatabase(by databaseId: String) -> URL {
-        .notionAPI.appendingPathComponent("v1/databases/\(databaseId)/query")
+    static let jiraAPI = URL(string: "https://api.jira.com")!
+    static let jiraSearch: URL = .jiraAPI.appendingPathComponent("v1/search")
+    static let jiraPages: URL = .jiraAPI.appendingPathComponent("v1/pages")
+    static func jiraQueryDatabase(by databaseId: String) -> URL {
+        .jiraAPI.appendingPathComponent("v1/databases/\(databaseId)/query")
     }
 }
 
 fileprivate extension URLRequest {
-    func notionHeaders(secrets: NotionSecrets) -> URLRequest {
+    func jiraHeaders(secrets: JiraSecrets) -> URLRequest {
         header(.contentType, value: "application/json")
             .header(.authorization, value: "Bearer \(secrets.secret)")
-            .header("Notion-Version", value: "2022-02-22")
+            .header("Jira-Version", value: "2022-02-22")
     }
 }
 
@@ -31,33 +31,33 @@ extension Constants {
     public static let jiraSecretLabel = "JIRA_PRIVATE_SECRET"
 }
 
-public final class FormNotionRepository: FormRepository {
-    public static let shared = FormNotionRepository()
+public final class JiraRepository: FormRepository {
+    public static let shared = JiraRepository()
     
-    @KeychainWrapper(Constants.jiraSecretLabel) public var jiraSecrets: NotionSecrets?
+    @KeychainWrapper(Constants.jiraSecretLabel) public var jiraSecrets: JiraSecrets?
 
     func post(form: FormModel) async throws -> Void {
-        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
-        guard let postPageBody = NotionPageBodyDTO(form) else { throw FormError.transformation }
+        guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
+        guard let postPageBody = JiraPageBodyDTO(form) else { throw FormError.transformation }
         
-        let request = URLRequest(url: .notionPages)
-            .notionHeaders(secrets: jiraSecrets)
+        let request = URLRequest(url: .jiraPages)
+            .jiraHeaders(secrets: jiraSecrets)
             .method(.post(postPageBody))
         
         guard request.httpBody != nil else { throw FormError.transformation }
 
-        _ = try await transformAuthError(NotionFormService.shared.id) { [unowned self] in
-            try await self.request(request, NotionPostPageResponseDTO.self)
+        _ = try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
+            try await self.request(request, JiraPostPageResponseDTO.self)
         }
     }
     
-    func loadNotionDatabases(databaseId: String) async throws -> [AnyInputTemplate]? {
-        let apiDatabase = try await loadNotionDatabaseDTO().results.first {
+    func loadJiraDatabases(databaseId: String) async throws -> [AnyInputTemplate]? {
+        let apiDatabase = try await loadJiraDatabaseDTO().results.first {
             $0.id == databaseId
         }
         
         guard let apiDatabase else {
-            logger.warning("LoadInputsFromNotionDatabase: request was empty")
+            logger.warning("LoadInputsFromJiraDatabase: request was empty")
             return nil
         }
         
@@ -72,16 +72,16 @@ public final class FormNotionRepository: FormRepository {
     
     public static var scratchTemplate: FormTemplate {
         let style = FormModel.Style(
-            formName: NotionFormService.shared.description,
-            icon: .static(NotionFormService.shared.icon),
+            formName: JiraFormService.shared.description,
+            icon: .static(JiraFormService.shared.icon),
             color: Color.accentColor.rgba
         )
         
         let firstTemplate = OptionsTemplate(
             header: Header(
-                name: String(localized: "Notion Databases"),
+                name: String(localized: "Jira Databases"),
                 icon: "tray.2",
-                tags: [Tag.Notion.DatabasesField]
+                tags: [Tag.Jira.DatabasesField]
             ),
             config: OptionsTemplateConfig(
                 mandatory: Editable(true, constant: true),
@@ -95,19 +95,19 @@ public final class FormNotionRepository: FormRepository {
             FormHeader(
                 id: FormTemplateId(),
                 style: style,
-                integration: NotionFormService.shared.id
+                integration: JiraFormService.shared.id
             ),
             inputs: [firstTemplate],
             steps: [
-                Step(id: Tag.Notion.DatabasesField, name: String(localized: "Select database")),
-                Step(id: Tag.Notion.DatabaseColumns, name: String(localized: "Columns"), isLast: true)
+                Step(id: Tag.Jira.DatabasesField, name: String(localized: "Select database")),
+                Step(id: Tag.Jira.DatabaseColumns, name: String(localized: "Columns"), isLast: true)
             ]
         )
     }
     
     typealias Database = (id: String, name: String)
     func databases() async throws -> [Database] {
-        let response = try await self.loadNotionDatabaseDTO()
+        let response = try await self.loadJiraDatabaseDTO()
         return response.results.map {
             Database(id: $0.id, name: $0.validTitle())
         }
@@ -116,9 +116,9 @@ public final class FormNotionRepository: FormRepository {
         }
     }
     
-    typealias NotionProperty = (name: String, property: NotionPropertyDTO)
+    typealias JiraProperty = (name: String, property: JiraPropertyDTO)
     
-    func buildTemplates(_ properties: [NotionProperty]) -> [any InputTemplate] {
+    func buildTemplates(_ properties: [JiraProperty]) -> [any InputTemplate] {
         let properties = properties
             .sorted {
                 $0.property.id < $1.property.id
@@ -134,28 +134,28 @@ public final class FormNotionRepository: FormRepository {
         }
     }
     
-    private func buildTemplate(_ property: NotionProperty) -> any InputTemplate {
+    private func buildTemplate(_ property: JiraProperty) -> any InputTemplate {
         let header = Header(
             name: property.name,
-            icon: Tag.Notion.ColumnType.icon(property.property.headerType),
-            tags: Set([property.property.headerType, Tag.Notion.DatabaseColumns].compactMap{$0})
+            icon: Tag.Jira.ColumnType.icon(property.property.headerType),
+            tags: Set([property.property.headerType, Tag.Jira.DatabaseColumns].compactMap{$0})
         )
         
         let stringTags = [
-            Tag.Notion.ColumnType.title,
-            Tag.Notion.ColumnType.rich_text,
-            Tag.Notion.ColumnType.content,
-            Tag.Notion.ColumnType.url,
+            Tag.Jira.ColumnType.title,
+            Tag.Jira.ColumnType.rich_text,
+            Tag.Jira.ColumnType.content,
+            Tag.Jira.ColumnType.url,
         ]
         if !header.tags.intersection(stringTags).isEmpty {
             return TextTemplate(header: header)
-        } else if header.tags.contains(Tag.Notion.ColumnType.number) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.number) {
             return NumberTemplate(header: header)
-        } else if header.tags.contains(Tag.Notion.ColumnType.date) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.date) {
             return RangeTemplate(header: header)
-        } else if header.tags.contains(Tag.Notion.ColumnType.checkbox) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.checkbox) {
             return BoolTemplate(header: header)
-        } else if header.tags.contains(Tag.Notion.ColumnType.select) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.select) {
             let options = property.property.select?.options
                 .map(\.option) ?? []
                 .sorted {
@@ -170,7 +170,7 @@ public final class FormNotionRepository: FormRepository {
                 config: config,
                 value: Options(options: options, singleSelection: true)
             )
-        } else if header.tags.contains(Tag.Notion.ColumnType.multi_select) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.multi_select) {
             let options = property.property.multi_select?.options
                 .map(\.option) ?? []
                 .sorted {
@@ -186,7 +186,7 @@ public final class FormNotionRepository: FormRepository {
                 value: Options(options: options, singleSelection: false)
             )
             
-        } else if header.tags.contains(Tag.Notion.ColumnType.relation) {
+        } else if header.tags.contains(Tag.Jira.ColumnType.relation) {
             let targetId = property.property.relation?.database_id ?? "INVALID TARGET ID"
             let config = OptionsTemplateConfig(
                 singleSelection: Editable(false, constant: true),
@@ -202,29 +202,29 @@ public final class FormNotionRepository: FormRepository {
         }
     }
         
-    func loadNotionDatabaseDTO() async throws -> NotionGenericResponseDTO<NotionDatabaseDTO> {
-        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
+    func loadJiraDatabaseDTO() async throws -> JiraGenericResponseDTO<JiraDatabaseDTO> {
+        guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
 
-        let request = URLRequest(url: .notionSearch)
-            .notionHeaders(secrets: jiraSecrets)
-            .method(.post(NotionFilterBodyDTO()))
+        let request = URLRequest(url: .jiraSearch)
+            .jiraHeaders(secrets: jiraSecrets)
+            .method(.post(JiraFilterBodyDTO()))
         guard request.httpBody != nil else { throw FormError.transformation }
 
-        return try await transformAuthError(NotionFormService.shared.id) { [unowned self] in
-            try await self.request(request, NotionGenericResponseDTO<NotionDatabaseDTO>.self)
+        return try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
+            try await self.request(request, JiraGenericResponseDTO<JiraDatabaseDTO>.self)
         }
     }
     
     func searchPages(text: String, databaseId: String) async throws -> [Option] {
-        guard let jiraSecrets else { throw FormError.auth(NotionFormService.shared.id) }
+        guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
 
-        let request = URLRequest(url: .notionQueryDatabase(by: databaseId))
-            .notionHeaders(secrets: jiraSecrets)
-            .method(.post(NotionFilterBodyDTO(text)))
+        let request = URLRequest(url: .jiraQueryDatabase(by: databaseId))
+            .jiraHeaders(secrets: jiraSecrets)
+            .method(.post(JiraFilterBodyDTO(text)))
         guard request.httpBody != nil else { throw FormError.transformation }
 
-        return try await transformAuthError(NotionFormService.shared.id) { [unowned self] in
-            try await self.request(request, NotionGenericResponseDTO<NotionSearchDTO>.self).results
+        return try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
+            try await self.request(request, JiraGenericResponseDTO<JiraSearchDTO>.self).results
                 .map {
                     Option(optionId: $0.id, description: $0.description)
                 }
@@ -234,3 +234,4 @@ public final class FormNotionRepository: FormRepository {
         }
     }
 }
+

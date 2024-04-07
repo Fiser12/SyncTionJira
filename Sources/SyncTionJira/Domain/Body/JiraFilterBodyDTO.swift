@@ -1,8 +1,8 @@
 //
-//  NotionSecrets.swift
-//  SyncTion (iOS)
+//  JiraFilterBodyDTO.swift
+//  SyncTion (macOS)
 //
-//  Created by rgarciah on 24/6/21.
+//  Created by Ruben on 18.07.22.
 //
 
 /*
@@ -12,25 +12,24 @@ SyncTion is free software: you can redistribute it and/or modify it under the te
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import SyncTionCore
-import PreludePackage
+struct JiraFilterBodyDTO: Encodable {
+    let filter: Filter
 
-public struct NotionSecrets: LoadedFromEnvironmentVariable, Codable, Equatable {
-    var secret: String
-    
-    public var isValid: Bool {
-        !secret.isEmpty
+    init(_ text: String) {
+        filter = Filter(title: TitleFilter(contains: text), value: nil)
     }
 
-    public init(envText secret: String) {
-        self.init(secret: secret)
+    init() {
+        filter = Filter(property: "object", value: "database")
     }
+}
 
-    public init(secret: String) {
-        self.secret = secret
-    }
-    
-    public var isReady: Bool {
-        secret.isEmpty == false
-    }
+struct Filter: Encodable {
+    var property: String = "title"
+    var title: TitleFilter?
+    var value: String?
+}
+
+struct TitleFilter: Encodable {
+    let contains: String
 }

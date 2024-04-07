@@ -1,5 +1,5 @@
 //
-//  NotionHeaderType.swift
+//  JiraHeaderType.swift
 //  SyncTion (macOS)
 //
 //  Created by rgarciah on 1/7/21.
@@ -16,7 +16,7 @@ import Foundation
 import SyncTionCore
 
 extension Tag {
-    struct Notion {
+    struct Jira {
         private init() { fatalError() }
 
         static let DatabasesField = Tag("8b71ef28-38af-46ea-9609-5357b3244ec3")!

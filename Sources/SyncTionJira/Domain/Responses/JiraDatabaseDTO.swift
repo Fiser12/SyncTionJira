@@ -1,5 +1,5 @@
 //
-//  NotionDatabaseDTO.swift
+//  JiraDatabaseDTO.swift
 //  SyncTion (macOS)
 //
 //  Created by Ruben on 18.07.22.
@@ -14,13 +14,13 @@ You should have received a copy of the GNU General Public License along with thi
 
 import SyncTionCore
 
-struct NotionDatabaseDTO: Equatable, Decodable {
+struct JiraDatabaseDTO: Equatable, Decodable {
     let object: String
     let id: String
     let created_time: String
     let last_edited_time: String
-    let title: [NotionTitleDTO]
-    let properties: [String: NotionPropertyDTO]
+    let title: [JiraTitleDTO]
+    let properties: [String: JiraPropertyDTO]
     
     func validTitle() -> String {
         title.map(\.plain_text).joined()
@@ -41,16 +41,16 @@ struct NotionDatabaseDTO: Equatable, Decodable {
         self.id = try values.decode(String.self, forKey: .id)
         self.created_time = try values.decode(String.self, forKey: .created_time)
         self.last_edited_time = try values.decode(String.self, forKey: .last_edited_time)
-        self.title = try values.decode([NotionTitleDTO].self, forKey: .title)
-        self.properties = try values.decode([String: NotionPropertyDTO].self, forKey: .properties).filter {
+        self.title = try values.decode([JiraTitleDTO].self, forKey: .title)
+        self.properties = try values.decode([String: JiraPropertyDTO].self, forKey: .properties).filter {
             $0.value.isOperable()
         }
     }
 }
 
-struct NotionTitleDTO: Equatable, Decodable {
+struct JiraTitleDTO: Equatable, Decodable {
     let type: String
-    let text: NotionTextDTO
+    let text: JiraTextDTO
     let plain_text: String
     let href: String?
     
@@ -66,13 +66,13 @@ struct NotionTitleDTO: Equatable, Decodable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         
         self.type = try values.decode(String.self, forKey: .type)
-        self.text = try values.decode(NotionTextDTO.self, forKey: .text)
+        self.text = try values.decode(JiraTextDTO.self, forKey: .text)
         self.plain_text = try values.decode(String.self, forKey: .plain_text)
         self.href = try values.decodeIfPresent(String.self, forKey: .href)
     }
 }
 
-struct NotionTextDTO: Equatable, Decodable {
+struct JiraTextDTO: Equatable, Decodable {
     let content: String
     let link: String?
     
@@ -88,45 +88,45 @@ struct NotionTextDTO: Equatable, Decodable {
     }
 }
 
-struct NotionPropertyDTO: Equatable, Codable {
+struct JiraPropertyDTO: Equatable, Codable {
     static let types = [
-        "date": Tag.Notion.ColumnType.date,
-        "checkbox": Tag.Notion.ColumnType.checkbox,
-        "url": Tag.Notion.ColumnType.url,
-        "relation": Tag.Notion.ColumnType.relation,
-        "select": Tag.Notion.ColumnType.select,
-        "multi_select": Tag.Notion.ColumnType.multi_select,
-        "number": Tag.Notion.ColumnType.number,
-        "rich_text": Tag.Notion.ColumnType.rich_text,
-        "title": Tag.Notion.ColumnType.title,
+        "date": Tag.Jira.ColumnType.date,
+        "checkbox": Tag.Jira.ColumnType.checkbox,
+        "url": Tag.Jira.ColumnType.url,
+        "relation": Tag.Jira.ColumnType.relation,
+        "select": Tag.Jira.ColumnType.select,
+        "multi_select": Tag.Jira.ColumnType.multi_select,
+        "number": Tag.Jira.ColumnType.number,
+        "rich_text": Tag.Jira.ColumnType.rich_text,
+        "title": Tag.Jira.ColumnType.title,
     ]
     
     let id: String
     let type: String
-    let select: NotionSelectFieldDTO?
-    let multi_select: NotionSelectFieldDTO?
-    let relation: NotionRelationFieldDTO?
+    let select: JiraSelectFieldDTO?
+    let multi_select: JiraSelectFieldDTO?
+    let relation: JiraRelationFieldDTO?
     
     func isOperable() -> Bool {
-        NotionPropertyDTO.types.keys.contains(type)
+        JiraPropertyDTO.types.keys.contains(type)
     }
     
     var headerType: Tag? {
-        NotionPropertyDTO.types[type]
+        JiraPropertyDTO.types[type]
     }
 }
 
-struct NotionSelectFieldDTO: Equatable, Codable {
-    let options: [NotionOptionDTO]
+struct JiraSelectFieldDTO: Equatable, Codable {
+    let options: [JiraOptionDTO]
 }
 
-struct NotionRelationFieldDTO: Equatable, Codable {
+struct JiraRelationFieldDTO: Equatable, Codable {
     let database_id: String
     let synced_property_name: String
     let synced_property_id: String
 }
 
-struct NotionOptionDTO: Equatable, Codable {
+struct JiraOptionDTO: Equatable, Codable {
     let id: String
     let name: String
     var color: String = ""
