@@ -11,8 +11,8 @@ import SyncTionCore
 import PreludePackage
 
 fileprivate extension URL {
-    static let jiraAPI = URL(string: "https://api.jira.com")!
-    static let jiraSearch: URL = .jiraAPI.appendingPathComponent("v1/search")
+    static let jiraAPI = URL(string: "https://jira.atlassian.com/rest/api/")!
+    static let jiraProjects: URL = .jiraAPI.appendingPathComponent("2/project")
     static let jiraPages: URL = .jiraAPI.appendingPathComponent("v1/pages")
     static func jiraQueryDatabase(by databaseId: String) -> URL {
         .jiraAPI.appendingPathComponent("v1/databases/\(databaseId)/query")
@@ -38,38 +38,17 @@ public final class JiraRepository: FormRepository {
 
     func post(form: FormModel) async throws -> Void {
         guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
-        guard let postPageBody = JiraPageBodyDTO(form) else { throw FormError.transformation }
         
         let request = URLRequest(url: .jiraPages)
             .jiraHeaders(secrets: jiraSecrets)
-            .method(.post(postPageBody))
         
         guard request.httpBody != nil else { throw FormError.transformation }
 
-        _ = try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
-            try await self.request(request, JiraPostPageResponseDTO.self)
+        _ = try await transformAuthError(JiraFormService.shared.id) {
+
         }
     }
-    
-    func loadJiraDatabases(databaseId: String) async throws -> [AnyInputTemplate]? {
-        let apiDatabase = try await loadJiraDatabaseDTO().results.first {
-            $0.id == databaseId
-        }
         
-        guard let apiDatabase else {
-            logger.warning("LoadInputsFromJiraDatabase: request was empty")
-            return nil
-        }
-        
-        let properties = apiDatabase.properties.map {
-            (name: $0.key, property: $0.value)
-        }
-        return self.buildTemplates(properties)
-            .compactMap{
-                AnyInputTemplate($0)
-            }
-    }
-    
     public static var scratchTemplate: FormTemplate {
         let style = FormModel.Style(
             formName: JiraFormService.shared.description,
@@ -81,7 +60,7 @@ public final class JiraRepository: FormRepository {
             header: Header(
                 name: String(localized: "Jira Databases"),
                 icon: "tray.2",
-                tags: [Tag.Jira.DatabasesField]
+                tags: [Tag.Jira.ProjectsListField]
             ),
             config: OptionsTemplateConfig(
                 mandatory: Editable(true, constant: true),
@@ -99,139 +78,71 @@ public final class JiraRepository: FormRepository {
             ),
             inputs: [firstTemplate],
             steps: [
-                Step(id: Tag.Jira.DatabasesField, name: String(localized: "Select database")),
-                Step(id: Tag.Jira.DatabaseColumns, name: String(localized: "Columns"), isLast: true)
+                Step(id: Tag.Jira.ProjectsListField, name: String(localized: "Select database"))
             ]
         )
     }
     
-    typealias Database = (id: String, name: String)
-    func databases() async throws -> [Database] {
-        let response = try await self.loadJiraDatabaseDTO()
-        return response.results.map {
-            Database(id: $0.id, name: $0.validTitle())
+    typealias Project = (id: String, name: String)
+    func projects() async throws -> [Project] {
+        let response = try await self.loadJiraProjectsDTO()
+        return response.map {
+            Project(id: $0.id, name: $0.name)
         }
         .filter {
             !$0.name.isEmpty
         }
     }
     
-    typealias JiraProperty = (name: String, property: JiraPropertyDTO)
-    
-    func buildTemplates(_ properties: [JiraProperty]) -> [any InputTemplate] {
-        let properties = properties
-            .sorted {
-                $0.property.id < $1.property.id
-            }
-            .sorted {
-                $0.name < $1.name
-            }
-            .sorted {
-                $0.property.type == "title" && $1.property.type != "title"
-            }
-        return properties.map {
-            buildTemplate($0)
-        }
-    }
-    
-    private func buildTemplate(_ property: JiraProperty) -> any InputTemplate {
-        let header = Header(
-            name: property.name,
-            icon: Tag.Jira.ColumnType.icon(property.property.headerType),
-            tags: Set([property.property.headerType, Tag.Jira.DatabaseColumns].compactMap{$0})
-        )
-        
-        let stringTags = [
-            Tag.Jira.ColumnType.title,
-            Tag.Jira.ColumnType.rich_text,
-            Tag.Jira.ColumnType.content,
-            Tag.Jira.ColumnType.url,
-        ]
-        if !header.tags.intersection(stringTags).isEmpty {
-            return TextTemplate(header: header)
-        } else if header.tags.contains(Tag.Jira.ColumnType.number) {
-            return NumberTemplate(header: header)
-        } else if header.tags.contains(Tag.Jira.ColumnType.date) {
-            return RangeTemplate(header: header)
-        } else if header.tags.contains(Tag.Jira.ColumnType.checkbox) {
-            return BoolTemplate(header: header)
-        } else if header.tags.contains(Tag.Jira.ColumnType.select) {
-            let options = property.property.select?.options
-                .map(\.option) ?? []
-                .sorted {
-                    $0.description < $1.description
-                }
-            let config = OptionsTemplateConfig(
-                singleSelection: Editable(true, constant: true),
-                typingSearch: Editable(false, constant: false)
-            )
-            return OptionsTemplate(
-                header: header,
-                config: config,
-                value: Options(options: options, singleSelection: true)
-            )
-        } else if header.tags.contains(Tag.Jira.ColumnType.multi_select) {
-            let options = property.property.multi_select?.options
-                .map(\.option) ?? []
-                .sorted {
-                    $0.description < $1.description
-                }
-            let config = OptionsTemplateConfig(
-                singleSelection: Editable(false, constant: true),
-                typingSearch: Editable(false, constant: false)
-            )
-            return OptionsTemplate(
-                header: header,
-                config: config,
-                value: Options(options: options, singleSelection: false)
-            )
-            
-        } else if header.tags.contains(Tag.Jira.ColumnType.relation) {
-            let targetId = property.property.relation?.database_id ?? "INVALID TARGET ID"
-            let config = OptionsTemplateConfig(
-                singleSelection: Editable(false, constant: true),
-                typingSearch: Editable(true, constant: false),
-                targetId: targetId
-            )
-            return OptionsTemplate(
-                header: header,
-                config: config
-            )
-        } else {
-            return TextTemplate(header: header)
-        }
-    }
-        
-    func loadJiraDatabaseDTO() async throws -> JiraGenericResponseDTO<JiraDatabaseDTO> {
+    func loadJiraProjectsDTO() async throws -> [JiraProjectDTO] {
         guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
 
-        let request = URLRequest(url: .jiraSearch)
+        let request = URLRequest(url: .jiraProjects)
             .jiraHeaders(secrets: jiraSecrets)
-            .method(.post(JiraFilterBodyDTO()))
+            .method(.get)
         guard request.httpBody != nil else { throw FormError.transformation }
 
         return try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
-            try await self.request(request, JiraGenericResponseDTO<JiraDatabaseDTO>.self)
-        }
-    }
-    
-    func searchPages(text: String, databaseId: String) async throws -> [Option] {
-        guard let jiraSecrets else { throw FormError.auth(JiraFormService.shared.id) }
-
-        let request = URLRequest(url: .jiraQueryDatabase(by: databaseId))
-            .jiraHeaders(secrets: jiraSecrets)
-            .method(.post(JiraFilterBodyDTO(text)))
-        guard request.httpBody != nil else { throw FormError.transformation }
-
-        return try await transformAuthError(JiraFormService.shared.id) { [unowned self] in
-            try await self.request(request, JiraGenericResponseDTO<JiraSearchDTO>.self).results
-                .map {
-                    Option(optionId: $0.id, description: $0.description)
-                }
-                .sorted { first, second in
-                    first.description.levDis(text) < second.description.levDis(text)
-                }
+            try await self.request(request, [JiraProjectDTO].self)
         }
     }
 }
 
+
+struct JiraProjectDTO: Identifiable, Decodable {
+    let id: String
+    let key: String
+    let name: String
+    let `self`: URL
+    let avatarUrls: [String: URL]
+    let projectCategory: JiraProjectCategoryDTO
+    
+}
+
+struct JiraProjectCategoryDTO: Identifiable, Decodable {
+    let id: String
+    let `self`: URL
+    let name: String
+    let description: String
+}
+
+/*
+ {
+     "self": "http://www.example.com/jira/rest/api/2/project/EX",
+     "id": "10000",
+     "key": "EX",
+     "name": "Example",
+     "avatarUrls": {
+         "48x48": "http://www.example.com/jira/secure/projectavatar?size=large&pid=10000",
+         "24x24": "http://www.example.com/jira/secure/projectavatar?size=small&pid=10000",
+         "16x16": "http://www.example.com/jira/secure/projectavatar?size=xsmall&pid=10000",
+         "32x32": "http://www.example.com/jira/secure/projectavatar?size=medium&pid=10000"
+     },
+     "projectCategory": {
+         "self": "http://www.example.com/jira/rest/api/2/projectCategory/10000",
+         "id": "10000",
+         "name": "FIRST",
+         "description": "First Project Category"
+     }
+ },
+ */
