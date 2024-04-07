@@ -1,5 +1,9 @@
-import XCTest
-@testable import SyncTionJira
+//
+//  JiraProjectDTO.swift
+//  
+//
+//  Created by Rubén García Hernando on 7/4/24.
+//
 
 /*
 This file is part of SyncTion and is licensed under the GNU General Public License version 3.
@@ -8,11 +12,14 @@ SyncTion is free software: you can redistribute it and/or modify it under the te
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-final class JiraIntegrationTests: XCTestCase {
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual("Hello, World!", "Hello, World!")
-    }
+import Foundation
+
+struct JiraProjectDTO: Identifiable, Decodable {
+    let id: String
+    let key: String
+    let name: String
+    let `self`: URL
+    let avatarUrls: [String: URL]
+    let projectTypeKey: String
+    let archived: Bool
 }

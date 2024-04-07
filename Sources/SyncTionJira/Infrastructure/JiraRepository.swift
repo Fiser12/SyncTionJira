@@ -5,6 +5,13 @@
 //  Created by Ruben on 17.07.22.
 //
 
+/*
+This file is part of SyncTion and is licensed under the GNU General Public License version 3.
+SyncTion is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 import SwiftUI
 import Combine
 import SyncTionCore
@@ -108,40 +115,3 @@ public final class JiraRepository: FormRepository {
 }
 
 
-struct JiraProjectDTO: Identifiable, Decodable {
-    let id: String
-    let key: String
-    let name: String
-    let `self`: URL
-    let avatarUrls: [String: URL]
-    let projectCategory: JiraProjectCategoryDTO
-    
-}
-
-struct JiraProjectCategoryDTO: Identifiable, Decodable {
-    let id: String
-    let `self`: URL
-    let name: String
-    let description: String
-}
-
-/*
- {
-     "self": "http://www.example.com/jira/rest/api/2/project/EX",
-     "id": "10000",
-     "key": "EX",
-     "name": "Example",
-     "avatarUrls": {
-         "48x48": "http://www.example.com/jira/secure/projectavatar?size=large&pid=10000",
-         "24x24": "http://www.example.com/jira/secure/projectavatar?size=small&pid=10000",
-         "16x16": "http://www.example.com/jira/secure/projectavatar?size=xsmall&pid=10000",
-         "32x32": "http://www.example.com/jira/secure/projectavatar?size=medium&pid=10000"
-     },
-     "projectCategory": {
-         "self": "http://www.example.com/jira/rest/api/2/projectCategory/10000",
-         "id": "10000",
-         "name": "FIRST",
-         "description": "First Project Category"
-     }
- },
- */
